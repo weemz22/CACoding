@@ -1,5 +1,7 @@
 package app;
 
+import interface_adapter.clear_users.ClearController;
+import interface_adapter.clear_users.ClearViewModel;
 import interface_adapter.login.LoginViewModel;
 import interface_adapter.signup.SignupController;
 import interface_adapter.signup.SignupPresenter;
@@ -18,32 +20,47 @@ import java.io.IOException;
 
 public class SignupUseCaseFactory {
 
-    /** Prevent instantiation. */
-    private SignupUseCaseFactory() {}
+    private SignupUseCaseFactory() {
+        // Prevent instantiation
+    }
 
-    public static SignupView create(
-            ViewManagerModel viewManagerModel, LoginViewModel loginViewModel, SignupViewModel signupViewModel, SignupUserDataAccessInterface userDataAccessObject) {
+    public static SignupView createSignupView(
+            ViewManagerModel viewManager,
+            LoginViewModel loginViewModel,
+            SignupViewModel signupViewModel,
+            SignupUserDataAccessInterface userDataAccess,
+            ClearController clearController,
+            ClearViewModel clearViewModel) {
 
         try {
-            SignupController signupController = createUserSignupUseCase(viewManagerModel, signupViewModel, loginViewModel, userDataAccessObject);
-            return new SignupView(signupController, signupViewModel);
+            SignupController signupController = createSignupController(viewManager, signupViewModel, loginViewModel, userDataAccess);
+            return new SignupView(signupController, signupViewModel, clearViewModel, clearController);
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Could not open user data file.");
+            JOptionPane.showMessageDialog(null, "Error: Could not access user data file.");
+            return null;
         }
-
-        return null;
     }
 
-    private static SignupController createUserSignupUseCase(ViewManagerModel viewManagerModel, SignupViewModel signupViewModel, LoginViewModel loginViewModel, SignupUserDataAccessInterface userDataAccessObject) throws IOException {
+    /**
+     * Creates a SignupController.
+     * @param viewManager the view manager model
+     * @param signupViewModel the signup view model
+     * @param loginViewModel the login view model
+     * @param userDataAccess the user data access interface
+     * @return a new SignupController instance
+     * @throws IOException if there is an error accessing user data
+     */
+    private static SignupController createSignupController(
+            ViewManagerModel viewManager,
+            SignupViewModel signupViewModel,
+            LoginViewModel loginViewModel,
+            SignupUserDataAccessInterface userDataAccess) throws IOException {
 
-        // Notice how we pass this method's parameters to the Presenter.
-        SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel, signupViewModel, loginViewModel);
-
+        SignupOutputBoundary presenter = new SignupPresenter(viewManager, signupViewModel, loginViewModel);
         UserFactory userFactory = new CommonUserFactory();
+        SignupInputBoundary signupInteractor = new SignupInteractor(userDataAccess, presenter, userFactory);
 
-        SignupInputBoundary userSignupInteractor = new SignupInteractor(
-                userDataAccessObject, signupOutputBoundary, userFactory);
-
-        return new SignupController(userSignupInteractor);
+        return new SignupController(signupInteractor);
     }
 }
+
